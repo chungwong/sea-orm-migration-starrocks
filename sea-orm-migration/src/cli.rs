@@ -35,7 +35,7 @@ where
 
     let url = cli
         .database_url
-        .expect("Environment variable 'DATABASE_URL' not set");
+        .expect("Environment variable 'STARROCKS_URL' not set");
     let schema = cli.database_schema.unwrap_or_else(|| "public".to_owned());
 
     let connect_options = ConnectOptions::new(url)
@@ -124,7 +124,7 @@ pub struct Cli {
         global = true,
         short = 'u',
         long,
-        env = "DATABASE_URL",
+        env = "STARROCKS_URL",
         help = "Database URL"
     )]
     database_url: Option<String>,

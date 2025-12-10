@@ -11,7 +11,7 @@ async fn main() -> Result<(), DbErr> {
         .with_test_writer()
         .init();
 
-    let url = &std::env::var("DATABASE_URL").expect("Environment variable 'DATABASE_URL' not set");
+    let url = &std::env::var("STARROCKS_URL").expect("Environment variable 'STARROCKS_URL' not set");
 
     run_migration(url, default::Migrator, "sea_orm_migration", "public").await?;
     run_migration(

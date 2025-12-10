@@ -12,13 +12,17 @@ use sea_orm::sea_query::{
     Alias, Expr, ExprTrait, ForeignKey, IntoIden, Order, Query, Table, extension::postgres::Type,
 };
 use sea_orm::{
-    ActiveValue, ConnectionTrait, DbBackend, DbErr, DynIden, EntityTrait, FromQueryResult,
-    Iterable, QueryFilter, Schema, Statement, TransactionTrait,
+    ActiveModelTrait, ActiveValue, Condition, ConnectionTrait, DbBackend, DbErr, DeriveIden,
+    DynIden, EntityTrait, FromQueryResult, Iterable, QueryFilter, QueryTrait, Schema, Statement,
+    TransactionTrait,
 };
 #[allow(unused_imports)]
 use sea_schema::probe::SchemaProbe;
 
-use super::{IntoSchemaManagerConnection, MigrationTrait, SchemaManager, seaql_migrations};
+use super::{
+    IntoSchemaManagerConnection, MigrationTrait, SchemaManager, prelude::MysqlQueryBuilder,
+    seaql_migrations,
+};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 /// Status of migration
@@ -388,10 +392,12 @@ async fn drop_everything<C: ConnectionTrait>(db: &C) -> Result<(), DbErr> {
         let table_name: String = row.try_get("", "table_name")?;
         info!("Dropping table '{}'", table_name);
         let mut stmt = Table::drop();
-        stmt.table(Alias::new(table_name.as_str()))
+        let raw_sql = stmt
+            .table(Alias::new(table_name.as_str()))
             .if_exists()
-            .cascade();
-        db.execute(&stmt).await?;
+            .build(MysqlQueryBuilder)
+            .to_string();
+        db.execute_unprepared(&raw_sql).await?;
         info!("Table '{}' has been dropped", table_name);
     }
 
@@ -471,13 +477,17 @@ async fn exec_up_with(
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .expect("SystemTime before UNIX EPOCH!");
-        seaql_migrations::Entity::insert(seaql_migrations::ActiveModel {
+
+        let backend = db.get_database_backend();
+        let raw_sql = seaql_migrations::Entity::insert(seaql_migrations::ActiveModel {
             version: ActiveValue::Set(migration.name().to_owned()),
             applied_at: ActiveValue::Set(now.as_secs() as i64),
         })
         .table_name(migration_table_name.clone())
-        .exec(db)
-        .await?;
+        .build(backend)
+        .to_string();
+
+        db.execute_unprepared(&raw_sql).await?;
     }
 
     Ok(())
@@ -527,11 +537,15 @@ async fn exec_down_with(
         info!("Rolling back migration '{}'", migration.name());
         migration.down(manager).await?;
         info!("Migration '{}' has been rollbacked", migration.name());
-        seaql_migrations::Entity::delete_many()
+
+        let backend = db.get_database_backend();
+        let raw_sql = seaql_migrations::Entity::delete_many()
             .filter(Expr::col(seaql_migrations::Column::Version).eq(migration.name()))
             .table_name(migration_table_name.clone())
-            .exec(db)
-            .await?;
+            .build(backend)
+            .to_string();
+
+        db.execute_unprepared(&raw_sql).await?;
     }
 
     Ok(())

@@ -42,7 +42,7 @@
 
 use crate::{prelude::Iden, sea_query};
 use sea_orm::sea_query::{
-    Alias, ColumnDef, ColumnType, Expr, IntoIden, PgInterval, Table, TableCreateStatement,
+    Alias, ColumnDef, ColumnType, Expr, IntoIden, PgInterval, SeaRc, Table, TableCreateStatement,
 };
 
 #[derive(Iden)]
@@ -458,12 +458,18 @@ pub fn blob_uniq<T: IntoIden>(col: T) -> ColumnDef {
     blob(col).unique_key().take()
 }
 
+fn starrocks_boolean<T: IntoIden>(col: T) -> ColumnDef {
+    let bool_type = ColumnType::Custom(SeaRc::new("BOOLEAN"));
+
+    ColumnDef::new_with_type(col, bool_type)
+}
+
 pub fn boolean<T: IntoIden>(col: T) -> ColumnDef {
-    ColumnDef::new(col).boolean().not_null().take()
+    starrocks_boolean(col).not_null().take()
 }
 
 pub fn boolean_null<T: IntoIden>(col: T) -> ColumnDef {
-    ColumnDef::new(col).boolean().null().take()
+    starrocks_boolean(col).null().take()
 }
 
 pub fn boolean_uniq<T: IntoIden>(col: T) -> ColumnDef {

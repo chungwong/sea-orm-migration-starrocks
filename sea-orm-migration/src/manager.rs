@@ -1,4 +1,4 @@
-use super::{IntoSchemaManagerConnection, SchemaManagerConnection};
+use super::{prelude::MysqlQueryBuilder, IntoSchemaManagerConnection, SchemaManagerConnection};
 use sea_orm::sea_query::{
     ForeignKeyCreateStatement, ForeignKeyDropStatement, IndexCreateStatement, IndexDropStatement,
     SelectStatement, TableAlterStatement, TableCreateStatement, TableDropStatement,
@@ -39,6 +39,10 @@ impl<'c> SchemaManager<'c> {
         self.conn.execute(&stmt).await.map(|_| ())
     }
 
+    pub async fn exec_unprepared(&self, sql: &str) -> Result<(), DbErr> {
+        self.conn.execute_unprepared(sql).await.map(|_| ())
+    }
+
     pub fn get_database_backend(&self) -> DbBackend {
         self.conn.get_database_backend()
     }
@@ -51,15 +55,18 @@ impl<'c> SchemaManager<'c> {
 /// Schema Creation
 impl SchemaManager<'_> {
     pub async fn create_table(&self, stmt: TableCreateStatement) -> Result<(), DbErr> {
-        self.execute(stmt).await
+        self.exec_unprepared(&stmt.to_string(MysqlQueryBuilder))
+            .await
     }
 
     pub async fn create_index(&self, stmt: IndexCreateStatement) -> Result<(), DbErr> {
-        self.execute(stmt).await
+        self.exec_unprepared(&stmt.to_string(MysqlQueryBuilder))
+            .await
     }
 
     pub async fn create_foreign_key(&self, stmt: ForeignKeyCreateStatement) -> Result<(), DbErr> {
-        self.execute(stmt).await
+        self.exec_unprepared(&stmt.to_string(MysqlQueryBuilder))
+            .await
     }
 
     pub async fn create_type(&self, stmt: TypeCreateStatement) -> Result<(), DbErr> {
@@ -70,27 +77,33 @@ impl SchemaManager<'_> {
 /// Schema Mutation
 impl SchemaManager<'_> {
     pub async fn alter_table(&self, stmt: TableAlterStatement) -> Result<(), DbErr> {
-        self.execute(stmt).await
+        self.exec_unprepared(&stmt.to_string(MysqlQueryBuilder))
+            .await
     }
 
     pub async fn drop_table(&self, stmt: TableDropStatement) -> Result<(), DbErr> {
-        self.execute(stmt).await
+        self.exec_unprepared(&stmt.to_string(MysqlQueryBuilder))
+            .await
     }
 
     pub async fn rename_table(&self, stmt: TableRenameStatement) -> Result<(), DbErr> {
-        self.execute(stmt).await
+        self.exec_unprepared(&stmt.to_string(MysqlQueryBuilder))
+            .await
     }
 
     pub async fn truncate_table(&self, stmt: TableTruncateStatement) -> Result<(), DbErr> {
-        self.execute(stmt).await
+        self.exec_unprepared(&stmt.to_string(MysqlQueryBuilder))
+            .await
     }
 
     pub async fn drop_index(&self, stmt: IndexDropStatement) -> Result<(), DbErr> {
-        self.execute(stmt).await
+        self.exec_unprepared(&stmt.to_string(MysqlQueryBuilder))
+            .await
     }
 
     pub async fn drop_foreign_key(&self, stmt: ForeignKeyDropStatement) -> Result<(), DbErr> {
-        self.execute(stmt).await
+        self.exec_unprepared(&stmt.to_string(MysqlQueryBuilder))
+            .await
     }
 
     pub async fn alter_type(&self, stmt: TypeAlterStatement) -> Result<(), DbErr> {
